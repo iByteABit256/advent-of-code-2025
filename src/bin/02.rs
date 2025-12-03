@@ -1,7 +1,3 @@
-use std::collections::HashMap;
-
-use regex::Regex;
-
 advent_of_code::solution!(2);
 
 fn pow(n: u64, p: u64) -> u64 {
@@ -48,19 +44,18 @@ pub fn part_one(input: &str) -> Option<u64> {
     Some(sum)
 }
 
-fn is_repeating(s: &str, pattern: &str, pattern_history: &mut HashMap<String, Regex>) -> bool {
-    if !pattern_history.contains_key(pattern) {
-        let repeating_pattern = format!(r"^({})+$", pattern);
-        let re_new = Regex::new(&repeating_pattern).unwrap();
-        pattern_history.insert(pattern.to_string(), re_new);
-    };
-    let re = pattern_history.get(pattern).unwrap().to_owned();
-    re.is_match(s)
+fn is_repeating(s: &str, pattern: &str) -> bool {
+    for (i, _) in s.chars().enumerate().step_by(pattern.len()) {
+        let part: String = s.chars().skip(i).take(pattern.len()).collect();
+        if part != pattern {
+            return false;
+        }
+    }
+    true
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
     let mut sum = 0;
-    let mut pattern_history: HashMap<String, Regex> = HashMap::new();
 
     for seg in input.split(',') {
         let seg = seg.trim();
@@ -74,7 +69,7 @@ pub fn part_two(input: &str) -> Option<u64> {
             let nstr = n.to_string();
             for i in 0..nstr.len() / 2 {
                 let pattern = nstr.split_at(i + 1).0;
-                if is_repeating(&nstr, pattern, &mut pattern_history) {
+                if is_repeating(&nstr, pattern) {
                     sum += n;
                     break;
                 }
