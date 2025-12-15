@@ -142,7 +142,67 @@ pub fn part_one(input: &str) -> Option<u64> {
     Some(calculate_circuits(&m, k))
 }
 
+fn calculate_circuits_two(m: &[Vec<u64>]) -> Option<(usize, usize)> {
+    let n = m.len();
+
+    let mut circuits: Vec<Circuit> = (0..n).map(|i| HashSet::from([i])).collect();
+    let sorted_distances = minimum_distances(m);
+
+    for (i, j) in sorted_distances {
+        let l = circuits
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| c.contains(&i))
+            .map(|(idx, _)| idx)
+            .next()
+            .unwrap_or_else(|| panic!("no circuit found for point {}", i));
+        let r = circuits
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| c.contains(&j))
+            .map(|(idx, _)| idx)
+            .next()
+            .unwrap_or_else(|| panic!("no circuit found for point {}", j));
+
+        if l == r {
+            continue;
+        }
+
+        let c_new = connect(&circuits[l], &circuits[r]);
+
+        if l < r {
+            circuits.remove(r);
+            circuits.remove(l);
+        } else {
+            circuits.remove(l);
+            circuits.remove(r);
+        }
+        circuits.push(c_new);
+
+        if circuits.len() == 1 {
+            return Some((i, j));
+        }
+    }
+
+    None
+}
+
 pub fn part_two(input: &str) -> Option<u64> {
+    let points: Vec<Vec<u64>> = input
+        .lines()
+        .map(|l| {
+            l.split(",")
+                .map(|c| c.parse::<u64>().expect("not a number"))
+                .collect()
+        })
+        .collect();
+
+    let m = distance_matrix(&points);
+
+    if let Some((p1, p2)) = calculate_circuits_two(&m) {
+        return Some(points[p1][0] * points[p2][0]);
+    }
+
     None
 }
 
@@ -159,6 +219,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(25272));
     }
 }
