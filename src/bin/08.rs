@@ -2,8 +2,6 @@ use std::collections::HashSet;
 
 advent_of_code::solution!(8);
 
-const INF: u64 = u64::MAX;
-
 fn dist(p: &[u64], q: &[u64]) -> u64 {
     if p.len() != q.len() {
         panic!("invalid input, all points need to have the same dimensions");
@@ -20,56 +18,30 @@ fn distance_matrix(points: &[Vec<u64>]) -> Vec<Vec<u64>> {
     let n = points.len();
     let mut m = vec![vec![0; n]; n];
 
-    for i in 0..n {
-        for j in 0..n {
-            if m[i][j] != 0 {
-                continue;
-            }
-
-            if i == j {
-                m[i][j] = 0;
-            }
-
-            m[i][j] = dist(&points[i], &points[j]);
-            m[j][i] = m[i][j];
+    (0..n).for_each(|i| {
+        for j in (i + 1)..n {
+            let d = dist(&points[i], &points[j]);
+            m[i][j] = d;
+            m[j][i] = d;
         }
-    }
+    });
 
     m
 }
 
-fn minimum_distance(m: &[Vec<u64>], history: &HashSet<(usize, usize)>) -> (usize, usize) {
-    let mut min = INF;
-    let mut pair = (0, 0);
+fn minimum_distances(m: &[Vec<u64>]) -> Vec<(usize, usize)> {
+    let n = m.len();
+    let mut pairs: Vec<(usize, usize)> = (0..n)
+        .flat_map(|i| (i + 1..n).map(|j| (i, j)).collect::<Vec<(usize, usize)>>())
+        .collect();
+    pairs.sort_by_key(|&(i, j)| m[i][j]);
 
-    for (i, row) in m.iter().enumerate() {
-        for (j, col) in row.iter().enumerate() {
-            if i == j {
-                continue;
-            }
-
-            if history.contains(&(i, j)) || history.contains(&(j, i)) {
-                /*
-                println!(
-                    "minimum_distance: skipped {},{} because it existed in history",
-                    i, j
-                );
-                */
-                continue;
-            }
-
-            if *col < min {
-                min = *col;
-                pair = (i, j);
-            }
-        }
-    }
-
-    pair
+    pairs
 }
 
 type Circuit = HashSet<usize>;
 
+/*
 fn print_matrix(m: &[Vec<u64>]) {
     println!("Distance matrix:\n");
     m.iter().for_each(|row| {
@@ -88,25 +60,24 @@ fn to_string(c: &Circuit) -> String {
 fn print_all(circuits: &[Circuit]) {
     circuits.iter().for_each(|c| println!("{}", to_string(c)));
 }
+*/
 
 fn connect(c1: &Circuit, c2: &Circuit) -> Circuit {
     c1.union(c2).map(|p| p.to_owned()).collect()
 }
 
 fn calculate_circuits(m: &[Vec<u64>], num: u64) -> u64 {
-    //print_matrix(m);
-
     let n = m.len();
+
     let mut circuits: Vec<Circuit> = (0..n).map(|i| HashSet::from([i])).collect();
-    let mut min_history = HashSet::new();
+    let sorted_distances = minimum_distances(m);
 
-    for k in 0..num {
-        //println!("Circuits after {} iterations:", k);
-        //print_all(&circuits);
+    let mut connected = 0;
 
-        let (i, j) = minimum_distance(m, &min_history);
-        min_history.insert((i, j));
-        //println!("Current minimum distance: {},{}", i, j);
+    for (i, j) in sorted_distances {
+        if connected == num - 1 {
+            break;
+        }
 
         let l = circuits
             .iter()
@@ -124,11 +95,11 @@ fn calculate_circuits(m: &[Vec<u64>], num: u64) -> u64 {
             .unwrap_or_else(|| panic!("no circuit found for point {}", j));
 
         if l == r {
+            connected += 1;
             continue;
         }
 
         let c_new = connect(&circuits[l], &circuits[r]);
-        //println!("New circuit: {}", to_string(&c_new));
 
         if l < r {
             circuits.remove(r);
@@ -138,11 +109,10 @@ fn calculate_circuits(m: &[Vec<u64>], num: u64) -> u64 {
             circuits.remove(r);
         }
         circuits.push(c_new);
+        connected += 1;
     }
 
     circuits.sort_by_key(|c| c.len());
-    println!("Final circuits:");
-    print_all(&circuits);
     circuits
         .iter()
         .rev()
